@@ -1,0 +1,107 @@
+=== Hinweise ===
+
+Qt-Dokumentation: http://qt-project.org/doc/qt-4.8/
+
+Die Headerdateien (*.h) enthalten ausführliche Beschreibungen der Methoden und Eigenschaften der Klassen. Ein UML-Diagramm enthält die Datei modelio.png.
+
+Zum Ausführen des Programms muss die Bibliothek Qt4 verfügbar sein. Eine ausführbare Datei für Windows (inkl. Bibliotheken) befindet sich im Ordner „release“.
+
+=== Spielablauf ===
+
+Das Spielfeld (die Insel) besteht aus einer Anzahl von einzelnen Inselfeldern. Dabei gibt es drei Typen von Feldern: Landfelder (gelb), auf denen sich die Spielfigur bewegen kann (Pfeiltasten, Return zum Stehenbleiben). Von dort aus kann der Spieler das eigene und benachbarte, überflutete Felder (hellblau) trockenlegen (Umschalt + Pfeiltaste bzw. Return), wodurch sie zu Landfeldern werden. Überflutete Felder dürfen betreten werden. Außerdem gibt es noch untergegangene Felder (dunkelblau), die nicht begehbar sind und auch nicht mehr trockengelegt werden können.
+
+Ziel des Spiels ist es, durch das Trockenlegen von Inselfeldern möglichst lange auf der Insel zu überleben und eine möglichst hohe Punktzahl zu erreichen. Das Spiel ist beendet, wenn der Spieler auf einem untergegangenen Feld steht.
+
+Es gibt zwei Kartenstapel: Einen Flutkartenstapel mit zehn Karten, von denen zwei das Flutlevel erhöhen, und einen Feldkartenstapel, in dem für jedes nicht untergegange Inselfeld eine Karte hinterlegt ist. Nachdem drei Spieleraktionen (Schritte, Trockenlegen von Feldern, Aufnehmen von Gegenständen [s. u.]) durchgeführt wurden, wird eine Karte vom Flutkartenstapel gezogen; ist es eine Flut-steigen-Karte wird das Flutlevel um eins erhöht; ist der Stapel leer, werden alle Karten gemischt und es wird von oben eine Karte gezogen. Das Flutlevel gibt an, wie viele Karten vom Feldkartenstapel gezogen werden. Jedes gezogene Feld wird überflutet; dabei werden trockene Felder zu überfluteten Feldern und überflutete Felder zu untergegangen Feldern. Ist der Feldkartenstapel leer, werden die gezogenen Karten gemischt und bilden den neuen Feldkartenstapel. Außerdem werden bei Erhöhung des Flutlevels alle bisher gezogenen Feldkarten gemischt und oben auf den Feldkartenstapel gelegt.
+
+Als Hilfe sind auf der Insel einige Gegenstände verstreut, die der Spieler aufnehmen kann (Alt + Pfeiltaste bzw. Return). Dadurch erhält er einige Zusatzpunkte. Je nach Gegenstand erhält der Spieler entweder noch einige zusätzliche Schritte (schwarze Gegenstände), das Flutlevel wird wieder um drei Stufen abgesenkt (graue Gegenstände) oder es gibt zusätzliche Punkte (gelbe Gegenstände).
+
+Hinweis: Die Spielidee basiert auf dem sechsten Programmierwettbewerb von freiesMagazin <http://www.freiesmagazin.de/sechster_programmierwettbewerb>. Dieser wiederum basiert auf einer vereinfachten Variante des Brettspiels „Die verbotene Insel“ (Die_verbotene_Insel49013D.pdf).
+
+
+=== Spieler ===
+
+Zu jedem MainWindow gehört genau ein Spieler. Jeder Spieler hat eine (private) Position (int _x, _y), eine zugeordnete Insel (Insel _insel) und ein zugeordnetes Hauptfenster (parent), in dem der Spieler gezeichnet wird. Diese vier Werte werden dem Konstruktor übergeben.
+
+Ein Spieler kann sich um ein Feld nach oben, unten, rechts oder links bewegen(int dX, int dY) (oder stehenbleiben), einen Gegenstand von diesen Feldern oder dem aktuellen Feld aufnehmen oder eins dieser Felder trockenlegen. Nach dem Ausführen einer Aktion wird der Wert von _lblSchritte um eins verringert (s. u.). Nach dem Trockenlegen wird der Wert von _lblPunkte um 1 erhöht. Vor dem Ausführen jeder Aktion wird geprüft, ob diese Aktion ausgeführt werden darf. D. h. der Spieler kann nur auf ein Feld bewegt werden, dass betreten werden darf (s. Insel-Klasse), kann nur Gegenstände von Feldern aufheben, auf denen Gegenstände sind, und nur Felder trockenlegen, die überflutet sind. Beim Aufnehmen eines Gegenstandes wird - zusätzlich zu einem Punktebonus von 50 Punkten - abhängig vom Gegenstandstyp eine zusätzliche Aktion ausgeführt: Bei Punktebonus (gold) werden zusätzlich 50 Punkte vergeben, bei Schrittbonus (schwarz) bekommt der Spieler 3 zusätzliche Schritte in der aktuellen Runde, und beim Flutlevelbonus (grau) wird die Insel angewiesen, das Flutlevel um 3 zu senken.
+
+==== Zeichnen des Spielers ====
+
+Der Spieler wird von der Funktion paintEvent, welche eine virtuelle, von Qwidget vererbte Funktion ist, gezeichnet. Diese Funktion wird immer dann auamtoisch von der Qt-Eventloop aufgerufen, wenn das Spieler-Objekt (ganz oder teilweise) neu gezeichnet werden muss. Der Spieler wird als graue Ellipse gezeichnet, die die x-Koordinate (bezogen auf die obere linke Ecke) feldSize*_x (feldSize wird von der Insel berechnet, vgl. Inselklasse), die y-Koordinate feldSize*_y+PADDING_TOP (PADDING_TOP ist der Platz, den die Labels oben im Fenster einnehmen), die beiden gleich großen Redien feldSize und eine Linienbreite von 10 px (der Spieler ist also etwas größer als ein Inselfeld, da die Linienbreite nicht bei beim Radius mit einbezogen wird).
+
+==== Labels ====
+
+Jeder Spieler besitzt zwei Labels vom Typ CountingLabel, die die aktuelle Punktzahl (_lblPunkte) bzw. die Anzahl (_lblSchritte) der verbleibenden Schritte der aktuellen Runde anzeigen. Im Gegensatz zu einem normalen Qlabel besitzt die Klasse CountingLabel eine Beschriftung (_caption) und einen Zahlenwert (_value), die als „_caption: _value“ angezeigt werden. _caption kann mit der Funktion setCaption(const QString str) geändert werden, _value mit setValue(const int n) und add(const int n); letztere Funktion fügt einen übergebenen wert n zu _value hinzu.
+
+=== Kartenstapel ===
+
+Kartenstapel ist eine Template-Klasse, sodass Karten unterschiedlicher Datentypen (T) verwaltet werden können. Von der Insel wird ein Stapel mit dem Typ bool für die Flutkartenstapel, und ein Stapel mit dem Typ Feld* (Zeiger auf Feld) für den Feldkartenstapel erzeugt.
+
+==== Verwaltung der Karten ====
+
+Die Karten werden in einer linearen Liste (Klasse QList<T>) gespeichert. Ein Karte kann mit der Funktion karteHinzufuegen(cont T &karte) hinzugefügt werden. Die private Variable _pos gibt an, an welcher Stelle man sich gerade im Stapel befindet. Anschaulich bedeutet das, dass die ersten _pos Karten vom Stapel gezogen worden sind.
+
+==== Mischen ====
+
+Die mischen(const int n)-Funktion geht vertauscht 2*x-mal zwei zufällig ausgewählte Karten (a und b) des Stapels, dabei ist x die Anzahl der Karten im Stapel. Beim Vertauschen wird a in tmp zwischengespeichert, a=b gesetzt und anschließend b=tmp. Die Zufallszahlen werden per rand()%(n+1) (% ist die Modulo-Funktion; rand() liefert ganzzahlige Zufallszahlen bis zu einer systemabhängigen Obergänze; n ist die Anzahl der Karten, die gemischt werden sollen [die ersten n Karten werden gemischt]) berechnet, stammen also aus dem Intervall [0;n].
+
+Zur Vereinfachung gibt es eine Funktion mischen(), die alle Karten mischt (n=_karten.length()-1), und eine Funktion gezogeneMischen(), die alle bisher gezogenen Karten mischt (n=_pos) und _pos=0 setzt.
+
+==== Karte ziehen ====
+
+karteZiehen() gibt die Karte an der Position _pos zurück und erhöht _pos um 1. Falls _pos größer oder gleich der Anzahl der Karten ist, wird _pos=0 gesetzt, alle Karten werden gemischt, und die erste Karte wird gezogen.
+
+=== Insel ===
+
+Die Klasse Insel repräsentiert das Spielfeld in einer zweidimensionalen (privaten) Liste insel_, die Pointer auf Felder enthält. Als parent wird ein MainWindow benötigt, in das die Insel gezeichnet wird. Jede Insel besitzt einen Feld- und einen Flutkartenstapel. Der Flutkartenstapel wird im Konstruktor mit 10 Karten bestückt, 8 haben den Wert false, 2 den Wert true (true erhöht das Flutlevel).
+
+==== Zeichnen ====
+
+Mit der Funktion paintEvent wird die Insel gezeichnet. Diese Funktion wird bei jeder Änderung der Fenstergröße und nach Spielaktionen automatisch von Qt aufgerufen, um die Insel neu zu zeichnen.
+
+In der Funktion wird zuerst durch Aufruf der Funktion feldSize eine neue Feldgröße berechnet. Danach werden zuerst die einzelnen Felder berechnet, deren Farbe vom Status des Feldes (trocken, überflutet, untergegangen) abhängt. Dies geschieht, indem mit zwei for-Schleifen über die zweidimensionale Liste insel_iteriert wird. Die x-Koordinate eines Feldes ist x*size, y-Koordinate ist y*size+PADDING_TOP, die Seitenlänge ist feldSize. Anschließend wird noch, falls notwendig, der Gegenstand eines Feldes mithilfe eines switch-Statement gezeichnet.
+
+Die Funktion feldSize berechnet die Größe eines einzelnen Feldes, indem die Fenstergröße in x- und in y-Richtung (letztere abzgl. PADDING_TOP) durch die Anzahl der Felder geteilt wird und anschließend der kleinere Wert als Seitenlänge für die quadratischen Felder zurückgegeben wird.
+
+==== Aufbauen der Insel ====
+
+Die Funktion zeileAnhaengen(const QList<Feld *> zeile) hängt an insel_ eine neue Zeile mit Zeigern auf Felder an. Dabei wird für jedes Feld eine Karte im Feldkartenstapel hinterlegt und wenn nötig der Zähler untergegangeneFelder_ um ein erhöht. Anschließend wird der Feldkartenstapel gemischt und inselgroesse_ (Anzahl der Felder) aktualisiert.
+
+==== Fluten, Trockenlegen und Aufnehmen der Gegenstände ====
+
+Die Funktionen fluten und trockenlegen ändern den Feldstatus eines Feldes.
+gibStatus(x,y) gibt den Status eines Feldes als Integer-Wert zurück.
+gibGegenstandstyp(x,y) gibt zurück, ob auf einem Feld ein Gegenstand liegt und wenn ja, welcher Gegenstand dort liegt.
+
+Mit der Funktion gegenstandNehmen(x,y) wird der Gegenstand auf einem Feld  „aufgenommen“, das heißt der Gegenstandstyp zurückgegeben und vom Feld entfernt.
+
+Die Funktion darfBetretenWerden(x,y) gibt zurück, ob ein Feld nicht untergegangen ist und somit vom Spieler betreten werden kann. Existiert das Feld nicht, wird ebenfalls false zurückgegeben.
+
+Mit der Prozedur gegenstandAblegen(x,y,typ) wird auf einem Feld x,y ein Gegenstand vom Typ typ abgelegt.
+
+==== Flutmanager ====
+
+Der Flutmanager kümmert sich darum, dass die Inselfelder überflutet werden. Zunächst wird eine Karte vom Flutkartenstapel gezogen. Ist der Wert true, wird flutlevel_ um 1 erhöht und die gezogenen Karten von feldkartenstapel_ gemischt.
+
+In einer for-Schleife wird von i bis flutlevel-1 gezählt und es (sofern es noch nicht untergegangene Felder gibt) wird (durch ggf. wiederholtes Ziehen) ein nicht untergegangenes Feld im Feldkartenstapel gesucht und dieses geflutet. Anschließend wird untergegangenFelder um 1 erhöht, falls das geflutete Feld jetzt untergegangen ist.
+
+Die Funktion gibt true zurück, wenn eine Flut-Steigen-Karte gezogen worden ist.
+
+=== MainWindow ===
+
+Das Hauptfenster besitzt eine Insel und einen Spieler. Es kümmer sich darum, die Datei feld.txt Zeilenweise einzulesen und entsprechende Instruktionen an die Insel zum anlegen der Felder weiterzugeben, und darum, einen Spieler mit einer bestimmten Startposition zu erstellen.
+
+==== Gameloop ====
+
+Struktur:
+
+:gameLoopStart
+_spieler->naechsteRunde();
+[auf Benutzereingaben warten]
+_insel->flutmanager();
+wenn Spieler tot
+	_gameEndMessage();
+sonst
+	goto gameLoopStart
+
+=== EOD ===
